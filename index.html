@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b1f33" />
+    <meta name="description" content="TradeVault conecta compras empresariais a fornecedores verificados e condições comerciais claras." />
+    <title>TradeVault — Wholesale marketplace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/portal.css" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <div class="topline"><div class="container topline-inner"><span>TRADEVAULT / B2B PROCUREMENT NETWORK</span><span>Termos comerciais claros · fornecedores verificados</span></div></div>
+      <header class="site-header">
+        <div class="container header-inner">
+          <a class="brand" href="/" aria-label="TradeVault início">
+            <span class="brand-mark"><i></i><i></i><b></b></span><span class="brand-word">Trade<span>Vault</span></span>
+          </a>
+          <nav class="main-nav" aria-label="Navegação principal">
+            <a href="/catalog" data-nav="catalog">Catálogo</a>
+            <a href="/suppliers" data-nav="suppliers">Fornecedores</a>
+            <a href="/buyer-guide" data-nav="buyer-guide">Guia do comprador</a>
+          </nav>
+          <div class="header-actions">
+            <a class="header-support" href="/account">Minha conta <span>↗</span></a>
+            <a class="header-support" href="/support">Suporte <span>↗</span></a>
+            <button class="cart-trigger" data-action="open-cart" aria-label="Abrir carrinho">Carrinho <span class="cart-count">0</span></button>
+          </div>
+        </div>
+      </header>
+      <main id="page-content" tabindex="-1"></main>
+      <footer class="site-footer">
+        <div class="container footer-grid">
+          <div class="footer-brand"><a class="brand brand-light" href="/"><span class="brand-mark"><i></i><i></i><b></b></span><span class="brand-word">Trade<span>Vault</span></span></a><p>A camada de confiança entre quem fabrica e quem compra em escala.</p><div class="footer-status"><span class="status-dot"></span> Marketplace online</div></div>
+          <div><div class="footer-label">Explore</div><a href="/catalog">Catálogo B2B</a><a href="/suppliers">Rede de fornecedores</a><a href="/buyer-guide">Guia do comprador</a></div>
+          <div><div class="footer-label">Operação</div><a href="/support">Central de suporte</a><a href="/support">Como funciona</a><a href="/support">Fale com a TradeVault</a></div>
+          <div class="footer-news"><div class="footer-label">Briefing comercial</div><p>Insights de abastecimento, uma vez por mês.</p><form class="subscribe-form"><input type="email" placeholder="seu@email.com" aria-label="Seu email" required /><button type="submit" aria-label="Assinar">→</button></form><small>Sem spam. Cancelamento em um clique.</small></div>
+        </div>
+        <div class="container footer-bottom"><span>© 2026 TradeVault Network</span><span>Pedidos B2B · Banco persistente</span><span>Privacy <i>·</i> Terms</span></div>
+      </footer>
+    </div>
+    <div id="cart-overlay" class="overlay" hidden></div>
+    <aside id="cart-drawer" class="cart-drawer" aria-label="Carrinho" aria-hidden="true">
+      <div class="drawer-head"><div><span class="eyebrow">YOUR ORDER</span><h2>Seu carrinho <span class="cart-count">0</span></h2></div><button class="icon-button" data-action="close-cart" aria-label="Fechar carrinho">×</button></div>
+      <div id="cart-items" class="cart-items"></div>
+      <div class="drawer-foot"><div class="drawer-note"><span class="lock-icon">⌁</span><span>Pedido B2B · condições revisadas antes do checkout</span></div><div class="subtotal-row"><span>Subtotal estimado</span><strong id="cart-subtotal">R$ 0,00</strong></div><a href="/checkout" class="button button-primary button-full" data-action="go-checkout">Ir para checkout <span>→</span></a><button class="text-button" data-action="continue-shopping">Continuar comprando</button></div>
+    </aside>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js" defer></script>
+    <script src="/portal.js" defer></script>
+  </body>
+</html>

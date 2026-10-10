@@ -1,0 +1,17 @@
+{
+  "routes": [
+    { "path": "/", "title": "TradeVault — Wholesale marketplace" },
+    { "path": "/catalog", "title": "TradeVault — Catálogo" },
+    { "path": "/products/:slug", "title": "TradeVault — Produto" },
+    { "path": "/suppliers", "title": "TradeVault — Fornecedores" },
+    { "path": "/suppliers/:slug", "title": "TradeVault — Vitrine do fornecedor" },
+    { "path": "/buyer-guide", "title": "TradeVault — Guia do comprador" },
+    { "path": "/support", "title": "TradeVault — Suporte" },
+    { "path": "/checkout", "title": "TradeVault — Checkout" },
+    { "path": "/login", "title": "TradeVault — Login" },
+    { "path": "/account", "title": "TradeVault — Minha conta" },
+    { "path": "/admin", "title": "TradeVault — Super Admin" },
+    { "path": "/store", "title": "TradeVault — Visão da loja" },
+    { "path": "/pos", "title": "TradeVault — PDV" }
+  ]
+}
