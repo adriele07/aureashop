@@ -1,0 +1,15 @@
+{
+  "name": "tradevault",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TradeVault local B2B wholesale marketplace demo",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check public/app.js"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.24.5",
+    "stripe": "^23.0.0"
+  }
+}
