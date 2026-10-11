@@ -1,13 +1,22 @@
-# TradeVault — resultados
+# TradeVault — resultados e pendências
 
-- [x] Criar um marketplace de atacado B2B chamado “TradeVault” para conectar fornecedores a compradores empresariais em compras em grande volume.
-- [x] Disponibilizar uma página inicial com hero e banner destacando fornecedores selecionados.
-- [x] Disponibilizar uma grade de produtos com filtros por categoria e quantidade mínima de pedido (MOQ).
-- [x] Disponibilizar uma página de detalhes do produto com descrição, MOQ, informações do fornecedor e faixas de preço por volume.
-- [x] Disponibilizar páginas de vitrine dedicadas a fornecedores, reunindo perfil e respectivos produtos.
-- [x] Disponibilizar um carrinho de compras funcional com cookie HTTP-only e itens persistidos no banco de dados.
-- [x] Disponibilizar checkout B2B com criação de sessão Stripe, preços por volume, redirecionamento seguro e webhook assinado/idempotente para atualizar o status do pedido.
-- [x] Disponibilizar rodapé com acesso ao guia do comprador e canais de suporte.
-- [x] Aplicar uma linguagem visual profissional e confiável usando azul-marinho, branco e detalhes em âmbar.
-- [x] Disponibilizar APIs persistentes para catálogo, carrinho, pedidos, suporte e newsletter, com schema MySQL gerenciado e seed idempotente.
-- [ ] Para produção: reivindicar/configurar a conta Stripe, definir chaves live, meios de pagamento, frete, impostos, domínio e publicar o checkpoint.
+## Implementado no código
+
+- [x] Catálogo/vitrine, páginas de produto e fornecedor, filtros, carrinho e checkout B2B.
+- [x] Schema MySQL idempotente, dados iniciais, carrinho e pedidos persistidos.
+- [x] Áreas de cliente com histórico pessoal autenticado.
+- [x] Área Super Admin com visão global, faturamento pago por loja, bloqueio de lojas/usuários, vínculo de equipe e edição de metadados de planos.
+- [x] Área de loja com produtos, categorias, preço/MOQ, foto por URL, estoque, alertas, entradas/saídas, caixa e PDV.
+- [x] Atualização do andamento de pedidos pagos e exibição do status ao cliente autenticado.
+- [x] Autorização por perfil e loja no servidor; preços de PDV calculados pelo servidor; consulta individual de pedidos protegida.
+- [x] Bootstrap de Super Admin por lista explícita de e-mail/Open ID, sem promover automaticamente o primeiro usuário.
+- [x] Script `npm run check` valida sintaxe do servidor, banco e frontends.
+
+## Ainda necessário antes de uso real/produção
+
+- [ ] Configurar banco MySQL, autenticação OAuth e os segredos `TRADEVAULT_SUPER_ADMIN_EMAILS`/`TRADEVAULT_SUPER_ADMIN_OPEN_IDS` no ambiente protegido do deploy.
+- [ ] Configurar Stripe de teste e webhook assinado; realizar uma compra de ponta a ponta e confirmar atualização do pedido.
+- [ ] Para produção: substituir chaves de teste por chaves live, configurar domínio, meios de pagamento, impostos, frete, políticas e procedimentos de reembolso.
+- [ ] Configurar provisionamento/limites de planos e cobranças recorrentes. A edição atual altera metadados locais, não cria assinaturas Stripe.
+- [ ] Implementar upload de imagens (hoje o cadastro aceita URL pública), configurações gerais editáveis no painel e testes integrados com banco/OAuth/Stripe.
+- [ ] Validar experiência móvel, acessibilidade e fluxos operacionais com contas reais de Super Admin, lojista, funcionário e cliente antes de abrir ao público.

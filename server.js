@@ -5,7 +5,7 @@ const path = require('path');
 const db = require('./db');
 const Stripe = require('stripe');
 const jwt = require('jsonwebtoken');
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
 const root = __dirname;
 const publicDir = path.join(root, 'public');
@@ -24,7 +24,7 @@ const contentTypes = {
 };
 
 function send(res, status, body, type = 'text/plain; charset=utf-8', extra = {}) {
-  res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-cache', ...extra });
+  res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Permissions-Policy': 'camera=(), microphone=(), geolocation=()', ...extra });
   res.end(body);
 }
 function sendJson(res, status, data, extra = {}) {
@@ -67,10 +67,17 @@ async function readJson(req) {
   try { return JSON.parse(raw); } catch { throw Object.assign(new Error('Invalid JSON'), {status: 400}); }
 }
 function browserOrigin(req) {
-  if (req.headers.origin) return req.headers.origin;
-  const forwardedHost = req.headers['x-forwarded-host'];
-  const forwardedProto = req.headers['x-forwarded-proto'] || 'https';
-  return forwardedHost ? `${forwardedProto}://${forwardedHost}` : `http://127.0.0.1:${port}`;
+  const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
+  const host = forwardedHost || req.headers.host || `127.0.0.1:${port}`;
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || (forwardedHost || req.socket.encrypted ? 'https' : 'http')).split(',')[0].trim();
+  return `${forwardedProto}://${host}`;
+}
+
+function sameOriginRequest(req) {
+  if (!req.headers.origin) return true;
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+  const proto = String(req.headers['x-forwarded-proto'] || (req.socket.encrypted ? 'https' : 'http')).split(',')[0].trim();
+  try { const origin = new URL(req.headers.origin); return origin.host === host && origin.protocol === `${proto}:`; } catch { return false; }
 }
 
 function cookieAttributes(req) { return publicHttps(req) ? 'SameSite=None; Secure' : 'SameSite=Lax'; }
@@ -95,19 +102,23 @@ async function api(req, res, url) {
   if (url.pathname === '/api/admin/overview' && req.method === 'GET') { const user=await requireUser(req,res); if(!user||!requireRole(user,['super_admin'],res)) return true; return sendJson(res,200,await db.adminOverview()); }
   if (url.pathname === '/api/admin/stores' && req.method === 'GET') { const user=await requireUser(req,res); if(!user||!requireRole(user,['super_admin'],res)) return true; return sendJson(res,200,await db.listStores()); }
   if (url.pathname === '/api/admin/stores' && req.method === 'POST') { const user=await requireUser(req,res); if(!user||!requireRole(user,['super_admin'],res)) return true; const body=await readJson(req); requireFields(body,['name']); return sendJson(res,201,await db.createStore(body,body.ownerOpenId||null)); }
-  const storeStatus=url.pathname.match(/^\/api\/admin\/stores\/([^/]+)$/); if(storeStatus&&req.method==='PATCH'){const user=await requireUser(req,res);if(!user||!requireRole(user,['super_admin'],res))return true;const body=await readJson(req);return sendJson(res,200,await db.setStoreStatus(decodeURIComponent(storeStatus[1]),body.status==='blocked'?'blocked':'active'));}
+  const storeMembers=url.pathname.match(/^\/api\/admin\/stores\/([^/]+)\/members$/); if(storeMembers&&req.method==='POST'){const user=await requireUser(req,res);if(!user||!requireRole(user,['super_admin'],res))return true;const body=await readJson(req);requireFields(body,['openId','role']);return sendJson(res,200,await db.assignStoreMember(decodeURIComponent(storeMembers[1]),body.openId,body.role));}
+  const storeStatus=url.pathname.match(/^\/api\/admin\/stores\/([^/]+)$/); if(storeStatus&&req.method==='PATCH'){const user=await requireUser(req,res);if(!user||!requireRole(user,['super_admin'],res))return true;const body=await readJson(req);if(!['active','blocked'].includes(body.status))throw Object.assign(new Error('Status inválido'),{status:400});return sendJson(res,200,await db.setStoreStatus(decodeURIComponent(storeStatus[1]),body.status));}
   if (url.pathname === '/api/admin/users' && req.method === 'GET') { const user=await requireUser(req,res); if(!user||!requireRole(user,['super_admin'],res)) return true; return sendJson(res,200,await db.listUsers()); }
-  const userPatch=url.pathname.match(/^\/api\/admin\/users\/([^/]+)$/); if(userPatch&&req.method==='PATCH'){const user=await requireUser(req,res);if(!user||!requireRole(user,['super_admin'],res))return true;const body=await readJson(req);return sendJson(res,200,await db.updateUserRole(decodeURIComponent(userPatch[1]),body.role||'customer',body.blocked));}
-  if (url.pathname === '/api/admin/plans' && req.method === 'GET') { const user=await requireUser(req,res); if(!user||!requireRole(user,['super_admin'],res)) return true; const [rows]=await db.pool.query('SELECT * FROM plans WHERE active=1 ORDER BY monthly_price'); return sendJson(res,200,rows); }
+  const userPatch=url.pathname.match(/^\/api\/admin\/users\/([^/]+)$/); if(userPatch&&req.method==='PATCH'){const user=await requireUser(req,res);if(!user||!requireRole(user,['super_admin'],res))return true;const body=await readJson(req);const target=decodeURIComponent(userPatch[1]);if(target===user.open_id&&body.role&&body.role!=='super_admin')throw Object.assign(new Error('Não é permitido rebaixar o próprio perfil'),{status:400});return sendJson(res,200,await db.updateUserRole(target,body.role,typeof body.blocked==='boolean'?body.blocked:undefined));}
+  if (url.pathname === '/api/admin/plans' && req.method === 'GET') { const user=await requireUser(req,res); if(!user||!requireRole(user,['super_admin'],res)) return true; const [rows]=await db.pool.query('SELECT * FROM plans ORDER BY monthly_price'); return sendJson(res,200,rows); }
+  const planPatch=url.pathname.match(/^\/api\/admin\/plans\/([^/]+)$/);if(planPatch&&req.method==='PATCH'){const user=await requireUser(req,res);if(!user||!requireRole(user,['super_admin'],res))return true;const body=await readJson(req);if(body.monthlyPrice!==undefined&&(!Number.isFinite(Number(body.monthlyPrice))||Number(body.monthlyPrice)<0))throw Object.assign(new Error('Preço de plano inválido'),{status:400});const fields=[],values=[];if(body.name!==undefined){fields.push('name=?');values.push(String(body.name).trim());}if(body.monthlyPrice!==undefined){fields.push('monthly_price=?');values.push(Number(body.monthlyPrice));}if(body.active!==undefined){fields.push('active=?');values.push(body.active?1:0);}if(body.limits!==undefined){fields.push('limits_json=?');values.push(JSON.stringify(body.limits));}if(!fields.length)throw Object.assign(new Error('Nenhuma alteração informada'),{status:400});values.push(decodeURIComponent(planPatch[1]));await db.pool.execute(`UPDATE plans SET ${fields.join(',')} WHERE id=?`,values);const [[plan]]=await db.pool.execute('SELECT * FROM plans WHERE id=?',[decodeURIComponent(planPatch[1])]);if(!plan)throw Object.assign(new Error('Plano não encontrado'),{status:404});return sendJson(res,200,plan);}
   if (url.pathname === '/api/store/overview' && req.method === 'GET') { const user=await requireUser(req,res); if(!user||!requireRole(user,['store_owner','staff','super_admin'],res)) return true; const store=await requireStore(req,res,user); return store&&sendJson(res,200,{store,overview:await db.storeOverview(store.id)}); }
-  if (url.pathname === '/api/store/products' && ['GET','POST'].includes(req.method)) { const user=await requireUser(req,res); if(!user||!requireRole(user,['store_owner','staff','super_admin'],res)) return true; const store=await requireStore(req,res,user); if(!store)return true; if(req.method==='GET')return sendJson(res,200,await db.listStoreProducts(store.id)); const body=await readJson(req);requireFields(body,['name']);return sendJson(res,201,await db.saveStoreProduct(store.id,body)); }
+  if (url.pathname === '/api/store/products' && ['GET','POST','PATCH'].includes(req.method)) { const user=await requireUser(req,res); if(!user||!requireRole(user,['store_owner','staff','super_admin'],res)) return true; const store=await requireStore(req,res,user); if(!store)return true; if(req.method==='GET')return sendJson(res,200,await db.listStoreProducts(store.id)); const body=await readJson(req);requireFields(body,['name']);if(req.method==='PATCH')requireFields(body,['id']);return sendJson(res,req.method==='POST'?201:200,await db.saveStoreProduct(store.id,body)); }
   if (url.pathname === '/api/store/inventory' && req.method === 'POST') { const user=await requireUser(req,res);if(!user||!requireRole(user,['store_owner','staff','super_admin'],res))return true;const store=await requireStore(req,res,user);if(!store)return true;const body=await readJson(req);requireFields(body,['productId','type','qty']);return sendJson(res,200,await db.moveInventory(store.id,body,user.open_id)); }
   if (url.pathname === '/api/store/orders' && req.method === 'GET') { const user=await requireUser(req,res);if(!user||!requireRole(user,['store_owner','staff','super_admin'],res))return true;const store=await requireStore(req,res,user);return store&&sendJson(res,200,await db.storeOrders(store.id)); }
+  const storeOrder=url.pathname.match(/^\/api\/store\/orders\/([^/]+)$/);if(storeOrder&&req.method==='PATCH'){const user=await requireUser(req,res);if(!user||!requireRole(user,['store_owner','staff','super_admin'],res))return true;const store=await requireStore(req,res,user);if(!store)return true;const body=await readJson(req);requireFields(body,['status']);return sendJson(res,200,await db.updateStoreOrderStatus(store.id,decodeURIComponent(storeOrder[1]),body.status));}
   if (url.pathname === '/api/store/cash' && req.method === 'GET') { const user=await requireUser(req,res);if(!user||!requireRole(user,['store_owner','staff','super_admin'],res))return true;const store=await requireStore(req,res,user);return store&&sendJson(res,200,await db.cash(store.id)); }
-  if (url.pathname === '/api/store/cash' && req.method === 'POST') { const user=await requireUser(req,res);if(!user||!requireRole(user,['store_owner','staff','super_admin'],res))return true;const store=await requireStore(req,res,user);if(!store)return true;const body=await readJson(req);return sendJson(res,200,body.action==='close'?await db.closeCash(store.id,body.amount):await db.openCash(store.id,user.open_id,body.amount)); }
+  if (url.pathname === '/api/store/cash' && req.method === 'POST') { const user=await requireUser(req,res);if(!user||!requireRole(user,['store_owner','staff','super_admin'],res))return true;const store=await requireStore(req,res,user);if(!store)return true;const body=await readJson(req);if(!['open','close'].includes(body.action))throw Object.assign(new Error('Ação de caixa inválida'),{status:400});return sendJson(res,200,body.action==='close'?await db.closeCash(store.id,body.amount):await db.openCash(store.id,user.open_id,body.amount)); }
   if (url.pathname === '/api/store/pos-sales' && req.method === 'POST') { const user=await requireUser(req,res);if(!user||!requireRole(user,['store_owner','staff','super_admin'],res))return true;const store=await requireStore(req,res,user);if(!store)return true;return sendJson(res,201,await db.createPosSale(store.id,user.open_id,await readJson(req))); }
   if (url.pathname === '/api/account/orders' && req.method === 'GET') { const user=await requireUser(req,res);if(!user)return true;return sendJson(res,200,await db.accountOrders(user.open_id,user.email)); }
   if (url.pathname === '/api/stripe/webhook' && req.method === 'POST') {
+    if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) return sendJson(res,503,{error:'Pagamentos ainda não configurados'});
     const raw = await readRaw(req);
     let event;
     try { event = stripe.webhooks.constructEvent(raw, req.headers['stripe-signature'], process.env.STRIPE_WEBHOOK_SECRET); }
@@ -134,12 +145,13 @@ async function api(req, res, url) {
     return sendJson(res, 200, await db.setCartItem(id, decodeURIComponent(cartItemMatch[1]), body.qty));
   }
   if (url.pathname === '/api/checkout/session' && req.method === 'POST') {
+    if (!stripe) return sendJson(res,503,{error:'Pagamentos ainda não configurados'});
     const body = await readJson(req);
     requireFields(body, ['company', 'buyer', 'email', 'location']);
     const id = await cartIdFor(req, res);
     const cart = await db.getCart(id);
     if (!cart.items.length) throw Object.assign(new Error('Cart is empty'), {status: 400});
-    const checkoutUser=await currentUser(req); if(checkoutUser) { body.customerOpenId=checkoutUser.open_id; } const order = await db.createOrder(id, body, 'pending_payment');
+    const checkoutUser=await currentUser(req); if(checkoutUser) { body.customerOpenId=checkoutUser.open_id; } const order = await db.createOrder(id, body, 'pending_payment', false);
     const lineItems = cart.products.map((product, index) => ({
       price_data: {
         currency: 'brl',
@@ -160,6 +172,7 @@ async function api(req, res, url) {
       cancel_url: `${origin}/checkout?payment=cancelled&reference=${encodeURIComponent(order.reference)}`,
     });
     await db.updateOrderPayment(order.id, session.id);
+    await db.clearCartItems(id);
     return sendJson(res, 201, {url: session.url, reference: order.reference});
   }
   if (url.pathname === '/api/orders' && req.method === 'POST') {
@@ -169,7 +182,7 @@ async function api(req, res, url) {
     const checkoutUser=await currentUser(req); if(checkoutUser) body.customerOpenId=checkoutUser.open_id; return sendJson(res, 201, await db.createOrder(id, body));
   }
   const orderMatch = url.pathname.match(/^\/api\/orders\/([^/]+)$/);
-  if (orderMatch && req.method === 'GET') return sendJson(res, 200, await db.getOrder(decodeURIComponent(orderMatch[1])) || {error: 'Order not found'}, { 'Cache-Control': 'no-store' });
+  if (orderMatch && req.method === 'GET') { const user=await requireUser(req,res);if(!user)return true;const order=await db.getOrder(decodeURIComponent(orderMatch[1]));if(!order||!(order.customer_open_id===user.open_id||(!order.customer_open_id&&String(order.email).toLowerCase()===String(user.email).toLowerCase())))return sendJson(res,404,{error:'Pedido não encontrado'},{'Cache-Control':'no-store'});return sendJson(res,200,order,{'Cache-Control':'no-store'}); }
   if (url.pathname === '/api/support' && req.method === 'POST') {
     const body = await readJson(req);
     requireFields(body, ['email', 'message']);
@@ -197,6 +210,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/auth/logout') { setCookie(res,'webdev_app_session','',0,`HttpOnly; ${cookieAttributes(req)}`); return res.writeHead(302,{Location:'/'}).end(); }
     if (url.pathname.startsWith('/api/')) {
+      if (!['GET','HEAD','OPTIONS'].includes(req.method) && url.pathname !== '/api/stripe/webhook' && !sameOriginRequest(req)) return sendJson(res,403,{error:'Origem da requisição não autorizada'});
       const handled = await api(req, res, url);
       if (!handled && !res.writableEnded) sendJson(res, 404, {error: 'Not found'});
       return;

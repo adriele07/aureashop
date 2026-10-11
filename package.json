@@ -5,7 +5,8 @@
   "description": "TradeVault local B2B wholesale marketplace demo",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check public/app.js"
+    "check": "node --check server.js && node --check db.js && node --check public/app.js && node --check public/portal.js",
+    "test": "node --test"
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.3",
