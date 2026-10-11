@@ -2,6 +2,7 @@ const mysql = require('mysql2/promise');
 const crypto = require('crypto');
 const catalog = require('./data/catalog.json');
 const { normalizePosItems } = require('./pos');
+const { assertProductCapacity } = require('./product-limit');
 
 const databaseUrl = process.env.DATABASE_URL || process.env.DRIZZLE_DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is required when database persistence is enabled');
@@ -657,6 +658,8 @@ async function createStore(payload, ownerOpenId) {
       const [[owner]] = await connection.execute('SELECT open_id,role FROM app_users WHERE open_id=? FOR UPDATE', [ownerOpenId]);
       if (!owner) throw Object.assign(new Error('O usuário proprietário precisa entrar na plataforma primeiro.'), { status: 404 });
       if (owner.role === 'super_admin') throw Object.assign(new Error('Não use a conta Super Admin como proprietária de uma loja.'), { status: 409 });
+      const [[existingMembership]] = await connection.execute('SELECT store_id FROM store_members WHERE open_id=? LIMIT 1', [ownerOpenId]);
+      if (existingMembership) throw Object.assign(new Error('Cada usuário pode estar vinculado a uma loja por vez.'), { status: 409 });
       await connection.execute("INSERT INTO store_members (store_id,open_id,role) VALUES (?,?, 'owner')", [id, ownerOpenId]);
       await connection.execute("UPDATE app_users SET role='store_owner' WHERE open_id=?", [ownerOpenId]);
     }
@@ -880,18 +883,7 @@ async function saveStoreProduct(storeId, payload) {
   }
   const supplierId = cleanPlainText(payload.supplierId, 40);
   if (!supplierId) throw Object.assign(new Error('Selecione um fornecedor vinculado a esta loja.'), { status: 400 });
-  const [[supplier]] = await pool.execute(
-    'SELECT id,name FROM suppliers WHERE id=? AND store_id=? AND is_active=1 LIMIT 1',
-    [supplierId, storeId],
-  );
-  if (!supplier) throw Object.assign(new Error('O fornecedor não pertence a esta loja ou está inativo.'), { status: 404 });
-
   const id = payload.id ? cleanPlainText(payload.id, 40) : `p-${crypto.randomBytes(5).toString('hex')}`;
-  if (payload.id) {
-    const [[existing]] = await pool.execute('SELECT id,stock_reserved_qty FROM products WHERE id=? AND store_id=? LIMIT 1', [id, storeId]);
-    if (!existing) throw Object.assign(new Error('Produto não pertence a esta loja.'), { status: 404 });
-    if (stock < Number(existing.stock_reserved_qty || 0)) throw Object.assign(new Error('O estoque não pode ficar abaixo das unidades reservadas para pedidos pendentes.'), { status: 409 });
-  }
   const slugBase = cleanPlainText(payload.slug || name, 120).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'product';
   const slug = `${slugBase}-${id.slice(-4)}`;
   const category = cleanPlainText(payload.category || 'Geral', 100);
@@ -900,14 +892,38 @@ async function saveStoreProduct(storeId, payload) {
   const paymentInstructions = cleanPlainText(payload.paymentInstructions || '', 3000);
   const image = validImageUrl(payload.image || '');
   const tiers = Array.isArray(payload.tiers) && payload.tiers.length ? payload.tiers.slice(0, 10) : [[`${moq}+`, `R$ ${price.toFixed(2).replace('.', ',')}`]];
-  const values = [id, slug, name, supplier.id, supplier.name, category, moq, price, unit, image, cleanPlainText(payload.badge || 'LOJA', 80), description, JSON.stringify(tiers), cleanPlainText(payload.lead || 'A confirmar', 80), cleanPlainText(payload.terms || 'A combinar', 80), storeId, stock, threshold, paymentInstructions];
-  await pool.execute(
-    `INSERT INTO products
-      (id,slug,name,supplier_id,supplier_name,category,moq,price,unit,image,badge,description,tiers_json,lead_time,terms,store_id,stock_qty,low_stock_threshold,payment_instructions)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-     ON DUPLICATE KEY UPDATE slug=VALUES(slug),name=VALUES(name),supplier_id=VALUES(supplier_id),supplier_name=VALUES(supplier_name),category=VALUES(category),moq=VALUES(moq),price=VALUES(price),unit=VALUES(unit),image=VALUES(image),badge=VALUES(badge),description=VALUES(description),tiers_json=VALUES(tiers_json),lead_time=VALUES(lead_time),terms=VALUES(terms),stock_qty=VALUES(stock_qty),low_stock_threshold=VALUES(low_stock_threshold),payment_instructions=VALUES(payment_instructions)`,
-    values,
-  );
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [[store]] = await connection.execute("SELECT id FROM stores WHERE id=? AND status='active' FOR UPDATE", [storeId]);
+    if (!store) throw Object.assign(new Error('Loja inativa ou não encontrada.'), { status: 409 });
+    const [[supplier]] = await connection.execute(
+      'SELECT id,name FROM suppliers WHERE id=? AND store_id=? AND is_active=1 LIMIT 1',
+      [supplierId, storeId],
+    );
+    if (!supplier) throw Object.assign(new Error('O fornecedor não pertence a esta loja ou está inativo.'), { status: 404 });
+    if (payload.id) {
+      const [[existing]] = await connection.execute('SELECT id,stock_reserved_qty FROM products WHERE id=? AND store_id=? FOR UPDATE', [id, storeId]);
+      if (!existing) throw Object.assign(new Error('Produto não pertence a esta loja.'), { status: 404 });
+      if (stock < Number(existing.stock_reserved_qty || 0)) throw Object.assign(new Error('O estoque não pode ficar abaixo das unidades reservadas para pedidos pendentes.'), { status: 409 });
+    } else {
+      const [[count]] = await connection.execute('SELECT COUNT(*) AS total FROM products WHERE store_id=?', [storeId]);
+      assertProductCapacity(count.total);
+    }
+    await connection.execute(
+      `INSERT INTO products
+        (id,slug,name,supplier_id,supplier_name,category,moq,price,unit,image,badge,description,tiers_json,lead_time,terms,store_id,stock_qty,low_stock_threshold,payment_instructions)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       ON DUPLICATE KEY UPDATE slug=VALUES(slug),name=VALUES(name),supplier_id=VALUES(supplier_id),supplier_name=VALUES(supplier_name),category=VALUES(category),moq=VALUES(moq),price=VALUES(price),unit=VALUES(unit),image=VALUES(image),badge=VALUES(badge),description=VALUES(description),tiers_json=VALUES(tiers_json),lead_time=VALUES(lead_time),terms=VALUES(terms),stock_qty=VALUES(stock_qty),low_stock_threshold=VALUES(low_stock_threshold),payment_instructions=VALUES(payment_instructions)`,
+      [id, slug, name, supplier.id, supplier.name, category, moq, price, unit, image, cleanPlainText(payload.badge || 'LOJA', 80), description, JSON.stringify(tiers), cleanPlainText(payload.lead || 'A confirmar', 80), cleanPlainText(payload.terms || 'A combinar', 80), storeId, stock, threshold, paymentInstructions],
+    );
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
   return (await listStoreProducts(storeId)).find(product => product.id === id);
 }
 

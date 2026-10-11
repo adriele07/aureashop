@@ -1,38 +1,30 @@
-# TradeVault — conclusão para Preview sem gateway pago
+# TradeVault — status para varejo local
 
-## Funcionalidades implementadas
+## Escopo confirmado
 
-### Super Admin (Sua Visão / Gestor Geral)
-- [x] Cadastro, gerenciamento e bloqueio de lojas.
-- [x] Visão global de métricas, faturamento das lojas e relatórios gerais.
-- [x] Configurações gerais editáveis e planos locais: criar, editar, ativar/desativar, definir limites, atribuir manualmente e consultar por loja; não há cobrança recorrente automática.
+- [x] Aplicação para lojas de varejo da cidade, não marketplace de atacado.
+- [x] Teto aplicado como **3.000 produtos por loja**; se o limite desejado for global, a regra poderá ser ajustada.
+- [x] Sem gateway: o cliente inicia o contato manual pelo link WhatsApp; o site não envia mensagem nem processa pagamento.
 
-### Visão da Loja (Lojista / Funcionários)
-- [x] Controle de Estoque: entrada, saída, alertas de estoque baixo e fornecedores vinculados à própria loja.
-- [x] Gestão de Vendas: PDV, controle de caixa e histórico de pedidos.
-- [x] Produtos: cadastro de itens, preços, categorias e fotos por URL pública; associação ao fornecedor da loja.
-- [x] Acesso restrito apenas aos dados e configurações da própria loja.
-- [x] Pedido fica pendente até a loja combinar e confirmar manualmente o pagamento; estoque é reservado, baixado apenas após confirmação externa e liberado ao cancelar; pedidos não pagos não entram no faturamento.
+## Capacidades existentes e proteção
 
-### Visão do Cliente Final
-- [x] Catálogo/vitrine digital para visualização de produtos.
-- [x] Carrinho e checkout sem cobrança automática, cartão ou gateway; o pedido autenticado gera um link click-to-chat e texto pré-preenchido para o cliente revisar e enviar manualmente.
-- [x] Histórico e acompanhamento pessoal vinculados ao Open ID Manus autenticado, sem confiar em e-mail/campo enviado pelo navegador.
+- [x] Super Admin: cadastro/bloqueio de lojas, visão global, relatórios, usuários e gestão manual de planos.
+- [x] Lojista/equipe: produtos, fornecedores de abastecimento, estoque/movimentos/alertas, PDV, caixa e pedidos.
+- [x] Cliente: vitrine pública, carrinho/pedido manual e histórico pessoal filtrado pela identidade autenticada.
+- [x] APIs de administração aceitam somente `super_admin`; APIs operacionais aceitam somente `store_owner`/`staff` e derivam o escopo pela associação autenticada.
+- [x] API/banco bloqueiam o produto 3.001; inclusão concorrente é serializada pela linha da loja. Edição não consome nova vaga.
+- [x] Painel da loja mostra `n/3.000` e desabilita o botão de cadastro no teto.
+- [x] `npm run check`; `npm test` com 21/21 testes; `npm audit --omit=dev` com 0 vulnerabilidades.
 
-## Verificações concluídas
+## Pendências antes de chamar de varejo local pronto
 
-- [x] `/health`, página inicial, catálogo, manifesto de rotas e início do OAuth foram validados em localhost e na URL pública do Preview; o callback OAuth real ainda aguarda nova tentativa após a correção.
-- [x] CSRF/origem: POST de mesma origem passa pela validação e pedido sem sessão retorna 401; origem externa retorna 403. Não foi criado pedido de teste.
-- [x] Cookies OAuth: nonce configurado como `SameSite=None; Secure`; teste confirma que limpar o nonce não sobrescreve o cookie de sessão.
-- [x] `npm run check` passou; `npm test` passou com 15/15 testes; `npm audit --omit=dev` encontrou 0 vulnerabilidades.
-- [x] A busca de produto aceita o ID interno do carrinho e o slug da rota; 3 testes cobrem as duas chaves e a ausência de produto.
-- [x] As queries de identidade OAuth foram preparadas com sucesso no MySQL sem executar gravações; o upsert anterior falhava com `Unknown column 'open_id'`.
-- [x] Código e dependências de runtime não chamam Stripe, não têm webhook de pagamento e não enviam mensagem automática pelo WhatsApp.
-
-## Ações necessárias antes de uso com clientes reais
-
-- [ ] Completar o login OAuth real no Preview com a conta do Super Admin; a allowlist já foi configurada pelo campo protegido, mas o fluxo de login ainda precisa ser concluído na sessão do navegador do usuário.
-- [ ] Na conta Super Admin, cadastrar o número de WhatsApp da loja (com código do país e DDD) e as instruções de pagamento gerais ou específicas de cada produto. O número atual está vazio, portanto o link de WhatsApp do catálogo-demo não poderá direcionar ao vendedor até essa configuração.
-- [ ] Pedidos manuais pendentes não expiram automaticamente; a loja precisa cancelar pedidos abandonados para liberar a reserva de estoque.
-- [ ] Antes de abrir ao público, validar com o dono as regras comerciais, telefone, instruções de pagamento, política de reserva/cancelamento e identidade visual/domínio.
-- [ ] A publicação pública não foi feita; só publicar depois da validação/decisão específica pela plataforma. Hospedagem, banco e custos da conta Manus são separados de taxas de gateway; confirmar dúvidas de conta em https://help.manus.im.
+- [ ] A interface pública ainda tem linguagem e funções B2B: MOQ, preços por volume, comprador empresarial, fornecedores internacionais e guia de atacado. Substituir por vitrine de lojas da cidade, preço unitário e disponibilidade.
+- [ ] A loja ainda não tem campos públicos de cidade/bairro/endereço nem filtro local. O município do proprietário ainda não foi informado.
+- [ ] O checkout exige conta Manus, não uma conta de consumidor comum. Escolher pedido de visitante com rastreador privado ou cadastro próprio de cliente; não adicionar SMS/e-mail pago sem autorização.
+- [ ] Campos de checkout ainda incluem empresa/e-mail/localização B2B; ajustar a dados adequados a consumidores depois da escolha de autenticação.
+- [ ] Completar o callback OAuth real no Preview; a allowlist de Super Admin está configurada, mas o login ainda precisa ser tentado novamente após a correção do upsert.
+- [ ] Configurar o WhatsApp e as instruções de pagamento de cada loja; nenhum número real foi fornecido.
+- [ ] Definir política de retirada/entrega e prazo de expiração/cancelamento; reservas pendentes hoje só são liberadas por cancelamento manual.
+- [ ] Testar acessos cruzados com contas autenticadas distintas de Super Admin, lojista/equipe e consumidor sem gravar pedidos reais no banco compartilhado.
+- [ ] Upload de fotos pelo painel ainda não existe (cadastro por URL/caminho público).
+- [ ] O Preview está em execução; publicação pública não foi feita. Custos da conta Manus devem ser confirmados em https://help.manus.im.

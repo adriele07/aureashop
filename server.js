@@ -5,6 +5,7 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const db = require('./db');
 const { setCookie } = require('./http-cookies');
+const { ADMIN_ROLES, STORE_ROLES, roleAllowed } = require('./role-access');
 
 const root = __dirname;
 const publicDir = path.join(root, 'public');
@@ -170,7 +171,7 @@ async function requireUser(req, res) {
 }
 
 function requireRole(user, roles, res) {
-  if (!roles.includes(user.role)) {
+  if (!roleAllowed(user, roles)) {
     sendJson(res, 403, { error: 'Seu perfil não tem acesso a esta função.' }, { 'Cache-Control': 'no-store' });
     return false;
   }
@@ -178,9 +179,7 @@ function requireRole(user, roles, res) {
 }
 
 async function requireStore(req, res, user) {
-  const store = user.role === 'super_admin'
-    ? (await db.pool.execute("SELECT * FROM stores WHERE id='store-demo' AND status='active' LIMIT 1"))[0][0]
-    : await db.accessibleStore(user.open_id);
+  const store = await db.accessibleStore(user.open_id);
   if (!store) {
     sendJson(res, 403, { error: 'Nenhuma loja ativa está vinculada a este usuário.' }, { 'Cache-Control': 'no-store' });
     return null;
@@ -219,12 +218,12 @@ function validateEmail(value) {
 
 async function adminUser(req, res) {
   const user = await requireUser(req, res);
-  return user && requireRole(user, ['super_admin'], res) ? user : null;
+  return user && requireRole(user, ADMIN_ROLES, res) ? user : null;
 }
 
 async function storeUser(req, res) {
   const user = await requireUser(req, res);
-  return user && requireRole(user, ['store_owner', 'staff', 'super_admin'], res) ? user : null;
+  return user && requireRole(user, STORE_ROLES, res) ? user : null;
 }
 
 async function api(req, res, url) {

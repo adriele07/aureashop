@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check db.js && node --check whatsapp.js && node --check http-cookies.js && node --check pos.js && node --check public/catalog-utils.js && node --check public/app.js && node --check public/manual-flow.js && node --check public/portal.js",
+    "check": "node --check server.js && node --check db.js && node --check whatsapp.js && node --check http-cookies.js && node --check pos.js && node --check role-access.js && node --check product-limit.js && node --check public/catalog-utils.js && node --check public/app.js && node --check public/manual-flow.js && node --check public/portal.js",
     "test": "node --test"
   },
   "dependencies": {

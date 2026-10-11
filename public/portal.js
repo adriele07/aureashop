@@ -130,6 +130,8 @@ function promptProduct(product, suppliers) {
 
 function storePage(data, products, suppliers, orders, cash, settings, sales) {
   const overview = data.overview;
+  const productLimit = 3000;
+  const atProductLimit = products.length >= productLimit;
   const productRows = products.length ? products.map(product => `<div class="portal-data-row">
     <div><strong>${esc(product.name)}</strong><small>${esc(product.supplier)} · ${esc(product.category)} · ${brl(product.price)}/${esc(product.unit)}</small></div>
     <div><strong>${Number(product.stockQty)} un. físico</strong><small>Disponível ${Number(product.availableQty)} · reservado ${Number(product.stockReservedQty)} · alerta em ${Number(product.lowStockThreshold)}</small>${statusPill(product.availableQty <= product.lowStockThreshold ? 'low' : 'active')}</div>
@@ -157,14 +159,14 @@ function storePage(data, products, suppliers, orders, cash, settings, sales) {
   return portalShell('Lojista / funcionários', esc(data.store.name), 'Gerencie apenas os produtos, pessoas, pedidos e recebimentos da sua loja.', `
     <div class="portal-grid metrics">${metric('Recebido', brl(overview.sales.revenue), `${overview.sales.orders || 0} venda(s) registradas`)}
     ${metric('Pedidos a confirmar', overview.pendingOrders.total, 'pagamento combinado fora do site')}
-    ${metric('Produtos', overview.products.total, 'catálogo desta loja')}${metric('Estoque baixo', overview.products.low_stock || 0, 'itens para repor')}</div>
+    ${metric('Produtos', `${products.length}/3.000`, 'limite desta loja')}${metric('Estoque baixo', overview.products.low_stock || 0, 'itens para repor')}</div>
     ${overview.lowStock?.length ? `<div class="portal-card stock-alert"><strong>Alertas de estoque baixo</strong><ul>${overview.lowStock.map(product => `<li>${esc(product.name)}: ${Math.max(0, Number(product.stock_qty) - Number(product.stock_reserved_qty || 0))} disponível · ${Number(product.stock_reserved_qty || 0)} reservado (alerta em ${Number(product.low_stock_threshold)})</li>`).join('')}</ul></div>` : ''}
     <div class="portal-card"><div class="portal-card-head"><div><span class="section-kicker">Contato e pagamento</span><h2>WhatsApp da loja</h2></div></div>
       <p>O checkout abre um link manual com a mensagem do pedido. Nada é enviado até o cliente tocar em Enviar; a equipe responde pelo WhatsApp.</p>
       <form id="store-settings-form"><div class="form-grid"><div class="form-field"><label>WhatsApp com código do país e DDD</label><input name="whatsappPhone" type="tel" value="${esc(settings.whatsapp_phone || '')}" placeholder="5511999999999" maxlength="20" /></div>
       <div class="form-field full"><label>Instruções gerais para combinar pagamento (opcional)</label><textarea name="paymentInstructions" rows="3" maxlength="3000" placeholder="Informe como o cliente deve pedir os dados e confirmar diretamente com a loja.">${esc(settings.payment_instructions || '')}</textarea></div></div>
       <button class="button button-ghost dark-button" type="submit">Salvar contato e instruções</button></form></div>
-    <div class="portal-grid portal-two"><div class="portal-card"><div class="portal-card-head"><div><span class="section-kicker">Produtos e estoque</span><h2>Catálogo da loja</h2></div><button class="button button-primary" data-store-action="new-product">+ Cadastrar produto</button></div>
+    <div class="portal-grid portal-two"><div class="portal-card"><div class="portal-card-head"><div><span class="section-kicker">Produtos e estoque</span><h2>Catálogo da loja</h2></div><button class="button button-primary" data-store-action="new-product" ${atProductLimit ? 'disabled title="Limite de 3.000 produtos atingido"' : ''}>${atProductLimit ? 'Limite de 3.000 atingido' : '+ Cadastrar produto'}</button></div>
       <div class="portal-data-list">${productRows}</div></div>
       <div class="portal-card"><div class="portal-card-head"><div><span class="section-kicker">Fornecedores</span><h2>Cadastro da loja</h2></div><button class="button button-ghost dark-button" data-store-action="new-supplier">+ Novo fornecedor</button></div>
       <div class="portal-data-list">${supplierRows}</div></div></div>
