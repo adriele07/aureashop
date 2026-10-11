@@ -1,17 +1,17 @@
 {
   "routes": [
-    { "path": "/", "title": "TradeVault — Wholesale marketplace" },
-    { "path": "/catalog", "title": "TradeVault — Catálogo" },
-    { "path": "/products/:slug", "title": "TradeVault — Produto" },
-    { "path": "/suppliers", "title": "TradeVault — Fornecedores" },
-    { "path": "/suppliers/:slug", "title": "TradeVault — Vitrine do fornecedor" },
-    { "path": "/buyer-guide", "title": "TradeVault — Guia do comprador" },
-    { "path": "/support", "title": "TradeVault — Suporte" },
-    { "path": "/checkout", "title": "TradeVault — Checkout" },
-    { "path": "/login", "title": "TradeVault — Login" },
-    { "path": "/account", "title": "TradeVault — Minha conta" },
+    { "path": "/", "title": "TradeVault — início" },
+    { "path": "/catalog", "title": "TradeVault — catálogo" },
+    { "path": "/products/:slug", "title": "TradeVault — produto" },
+    { "path": "/suppliers", "title": "TradeVault — fornecedores" },
+    { "path": "/suppliers/:slug", "title": "TradeVault — fornecedor" },
+    { "path": "/buyer-guide", "title": "TradeVault — guia do comprador" },
+    { "path": "/support", "title": "TradeVault — suporte" },
+    { "path": "/checkout", "title": "TradeVault — pedido manual" },
+    { "path": "/login", "title": "TradeVault — login" },
+    { "path": "/account", "title": "TradeVault — meus pedidos" },
     { "path": "/admin", "title": "TradeVault — Super Admin" },
-    { "path": "/store", "title": "TradeVault — Visão da loja" },
+    { "path": "/store", "title": "TradeVault — gestão da loja" },
     { "path": "/pos", "title": "TradeVault — PDV" }
   ]
 }

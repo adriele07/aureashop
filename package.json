@@ -2,15 +2,18 @@
   "name": "tradevault",
   "version": "1.0.0",
   "private": true,
-  "description": "TradeVault local B2B wholesale marketplace demo",
+  "packageManager": "npm@10.9.2",
+  "description": "TradeVault multiloja com pedidos manuais pelo WhatsApp, sem gateway integrado",
+  "engines": {
+    "node": ">=22 <23"
+  },
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check db.js && node --check public/app.js && node --check public/portal.js",
+    "check": "node --check server.js && node --check db.js && node --check whatsapp.js && node --check http-cookies.js && node --check pos.js && node --check public/app.js && node --check public/manual-flow.js && node --check public/portal.js",
     "test": "node --test"
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.24.5",
-    "stripe": "^23.0.0"
+    "mysql2": "^3.24.5"
   }
 }

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TradeVault">
+  <rect width="512" height="512" rx="112" fill="#0b1f33"/>
+  <path d="M126 159h260v55H126zM157 229h52v143h-52zM230 229h52v143h-52zM303 229h52v143h-52z" fill="#f4b544"/>
+  <path d="M126 391h260v27H126z" fill="#fff" opacity=".92"/>
+</svg>
