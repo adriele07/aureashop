@@ -20,7 +20,7 @@ const syncCart = async () => { try { const remote = await api('/api/cart'); cart
 const parsePrice = value => Number(value.replace(/[^\d,]/g,'').replace('.','').replace(',','.'));
 const tierPrice = (p, qty) => { const starts = p.tiers.map(t => Number(t[0].split(/[–+]/)[0].replace(/\./g,''))); let index = 0; starts.forEach((start, i) => { if (qty >= start) index = i; }); return parsePrice(p.tiers[index][1]); };
 const getSupplier = id => suppliers.find(s => s.id === id);
-const getProduct = slug => products.find(p => p.slug === slug);
+const getProduct = key => window.TradeVaultCatalog.findProduct(products, key);
 let cart = JSON.parse(localStorage.getItem('tradevault-cart') || '[]').map(item => { const p = getProduct(item.id); return p ? {...item, qty: Math.max(p.moq, Number(item.qty) || p.moq)} : null; }).filter(Boolean);
 const saveCart = () => { localStorage.setItem('tradevault-cart', JSON.stringify(cart)); updateCartUI(); };
 const cartQty = () => cart.reduce((total,item) => total + item.qty, 0);

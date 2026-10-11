@@ -547,20 +547,32 @@ async function getUser(openId) {
 }
 
 async function upsertUser(identity) {
-  if (!identity.openId) throw Object.assign(new Error('A identidade de login está incompleta.'), { status: 400 });
+  const openId = cleanPlainText(identity.openId || '', 180);
+  if (!openId) throw Object.assign(new Error('A identidade de login está incompleta.'), { status: 400 });
   const email = cleanPlainText(identity.email || '', 220).toLowerCase();
-  const [[allowlisted]] = await pool.execute(
-    'SELECT identifier FROM admin_allowlist WHERE identifier IN (?,?) LIMIT 1',
-    [`open_id:${identity.openId}`, `email:${email}`],
-  );
-  const role = allowlisted ? 'super_admin' : 'customer';
-  await pool.execute(
-    `INSERT INTO app_users (open_id,name,email,role)
-     VALUES (?,?,?,?)
-     ON DUPLICATE KEY UPDATE name=VALUES(name),email=VALUES(email),role=IF(VALUES(role)='super_admin','super_admin',IF(role='super_admin' AND NOT EXISTS (SELECT 1 FROM admin_allowlist WHERE identifier=CONCAT('open_id:',VALUES(open_id)) OR identifier=CONCAT('email:',LOWER(VALUES(email)))),'customer',role)),last_seen_at=CURRENT_TIMESTAMP`,
-    [identity.openId, cleanPlainText(identity.name || 'TradeVault user', 180), email, role],
-  );
-  return getUser(identity.openId);
+  const name = cleanPlainText(identity.name || 'TradeVault user', 180);
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [[allowlisted]] = await connection.execute(
+      'SELECT identifier FROM admin_allowlist WHERE identifier IN (?,?) LIMIT 1',
+      [`open_id:${openId}`, `email:${email}`],
+    );
+    const role = allowlisted ? 'super_admin' : 'customer';
+    await connection.execute(
+      `INSERT INTO app_users (open_id,name,email,role) VALUES (?,?,?,?)
+       ON DUPLICATE KEY UPDATE name=VALUES(name),email=VALUES(email),last_seen_at=CURRENT_TIMESTAMP`,
+      [openId, name, email, role],
+    );
+    await connection.execute('UPDATE app_users SET role=? WHERE open_id=?', [role, openId]);
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+  return getUser(openId);
 }
 
 async function isStoreMember(openId, storeId) {

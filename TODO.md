@@ -21,10 +21,12 @@
 
 ## Verificações concluídas
 
-- [x] `/health`, página inicial, catálogo, manifesto de rotas e login foram validados em localhost e na URL pública do Preview.
+- [x] `/health`, página inicial, catálogo, manifesto de rotas e início do OAuth foram validados em localhost e na URL pública do Preview; o callback OAuth real ainda aguarda nova tentativa após a correção.
 - [x] CSRF/origem: POST de mesma origem passa pela validação e pedido sem sessão retorna 401; origem externa retorna 403. Não foi criado pedido de teste.
 - [x] Cookies OAuth: nonce configurado como `SameSite=None; Secure`; teste confirma que limpar o nonce não sobrescreve o cookie de sessão.
-- [x] `npm run check` passou; `npm test` passou com 12/12 testes; `npm audit --omit=dev` encontrou 0 vulnerabilidades.
+- [x] `npm run check` passou; `npm test` passou com 15/15 testes; `npm audit --omit=dev` encontrou 0 vulnerabilidades.
+- [x] A busca de produto aceita o ID interno do carrinho e o slug da rota; 3 testes cobrem as duas chaves e a ausência de produto.
+- [x] As queries de identidade OAuth foram preparadas com sucesso no MySQL sem executar gravações; o upsert anterior falhava com `Unknown column 'open_id'`.
 - [x] Código e dependências de runtime não chamam Stripe, não têm webhook de pagamento e não enviam mensagem automática pelo WhatsApp.
 
 ## Ações necessárias antes de uso com clientes reais
