@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 const db = require('./db');
 const { setCookie } = require('./http-cookies');
 const { ADMIN_ROLES, STORE_ROLES, roleAllowed } = require('./role-access');
+const { buildWhatsAppUrl } = require('./whatsapp');
+const { sanitizePublicCatalog, sanitizePublicCart } = require('./public-inventory');
 
 const root = __dirname;
 const publicDir = path.join(root, 'public');
@@ -232,7 +234,9 @@ async function api(req, res, url) {
     return sendJson(res, 200, { authenticated: Boolean(user), user }, { 'Cache-Control': 'no-store' });
   }
 
-  if (url.pathname === '/api/catalog' && req.method === 'GET') return sendJson(res, 200, await db.getCatalog());
+  if (url.pathname === '/api/catalog' && req.method === 'GET') {
+    return sendJson(res, 200, sanitizePublicCatalog(await db.getCatalog()));
+  }
 
   if (url.pathname === '/api/admin/overview' && req.method === 'GET') {
     const user = await adminUser(req, res);
@@ -445,20 +449,20 @@ async function api(req, res, url) {
 
   if (url.pathname === '/api/cart' && req.method === 'GET') {
     const id = await cartIdFor(req, res);
-    return sendJson(res, 200, await db.getCart(id), { 'Cache-Control': 'no-store' });
+    return sendJson(res, 200, sanitizePublicCart(await db.getCart(id)), { 'Cache-Control': 'no-store' });
   }
   if (url.pathname === '/api/cart/items' && req.method === 'POST') {
     const body = await readJson(req);
     requireFields(body, ['productId']);
     const id = await cartIdFor(req, res);
-    return sendJson(res, 200, await db.addCartItem(id, body.productId, body.qty), { 'Cache-Control': 'no-store' });
+    return sendJson(res, 200, sanitizePublicCart(await db.addCartItem(id, body.productId, body.qty)), { 'Cache-Control': 'no-store' });
   }
   const cartItem = url.pathname.match(/^\/api\/cart\/items\/([^/]+)$/);
   if (cartItem && ['PATCH', 'DELETE'].includes(req.method)) {
     const id = await cartIdFor(req, res);
-    if (req.method === 'DELETE') return sendJson(res, 200, await db.removeCartItem(id, decodeURIComponent(cartItem[1])), { 'Cache-Control': 'no-store' });
+    if (req.method === 'DELETE') return sendJson(res, 200, sanitizePublicCart(await db.removeCartItem(id, decodeURIComponent(cartItem[1]))), { 'Cache-Control': 'no-store' });
     const body = await readJson(req);
-    return sendJson(res, 200, await db.setCartItem(id, decodeURIComponent(cartItem[1]), body.qty), { 'Cache-Control': 'no-store' });
+    return sendJson(res, 200, sanitizePublicCart(await db.setCartItem(id, decodeURIComponent(cartItem[1]), body.qty)), { 'Cache-Control': 'no-store' });
   }
 
   if (url.pathname === '/api/orders' && req.method === 'POST') {

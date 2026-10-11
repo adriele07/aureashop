@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const catalog = require('./data/catalog.json');
 const { normalizePosItems } = require('./pos');
 const { assertProductCapacity } = require('./product-limit');
+const { resolveLoginRole } = require('./role-access');
 
 const databaseUrl = process.env.DATABASE_URL || process.env.DRIZZLE_DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is required when database persistence is enabled');
@@ -559,7 +560,11 @@ async function upsertUser(identity) {
       'SELECT identifier FROM admin_allowlist WHERE identifier IN (?,?) LIMIT 1',
       [`open_id:${openId}`, `email:${email}`],
     );
-    const role = allowlisted ? 'super_admin' : 'customer';
+    const [[existingUser]] = await connection.execute(
+      'SELECT role FROM app_users WHERE open_id=? FOR UPDATE',
+      [openId],
+    );
+    const role = resolveLoginRole(existingUser?.role, Boolean(allowlisted));
     await connection.execute(
       `INSERT INTO app_users (open_id,name,email,role) VALUES (?,?,?,?)
        ON DUPLICATE KEY UPDATE name=VALUES(name),email=VALUES(email),last_seen_at=CURRENT_TIMESTAMP`,

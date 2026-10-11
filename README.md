@@ -2,7 +2,7 @@
 
 Sistema multiloja em adaptação para **lojas de varejo locais** (não atacado), com estoque, PDV, pedidos e áreas para Super Admin, lojistas/equipe e clientes. Usa Node.js 22 e MySQL. O limite de cadastro é de 3.000 produtos por loja. O checkout não integra gateway de pagamento.
 
-> **Estado honesto:** a separação de papéis e o teto de 3.000 estão corrigidos no backend e cobertos por testes unitários. A vitrine ainda contém texto/elementos B2B (MOQ, preço por volume, comprador empresarial e guia de atacado); cidade/bairro/endereço e filtros locais também não foram concluídos. Esta versão Preview não deve ser apresentada como varejo local pronto para clientes.
+> **Estado honesto:** a separação de papéis e o limite 3.000 estão aplicados; o login preserva papéis de lojista/equipe; o endpoint de checkout importa o construtor WhatsApp; o catálogo e o carrinho públicos ocultam quantidades exatas de estoque. A vitrine ainda tem termos/elementos B2B (MOQ, preço por volume, comprador empresarial e guia de atacado), e cidade/bairro/endereço e filtros locais não foram concluídos. Esta versão Preview ainda não deve ser apresentada como varejo local pronto para consumidores.
 
 ## Pagamento: somente combinação manual
 
@@ -53,7 +53,7 @@ O primeiro usuário não recebe privilégios automaticamente. A allowlist define
 - **Lojista/equipe:** produtos da loja vinculada (máximo 3.000), fornecedores de abastecimento, estoque/movimentações/alertas, pedidos, caixa e PDV.
 - **Cliente:** catálogo público, carrinho de uma loja por pedido, checkout manual pelo WhatsApp e histórico pessoal após login. O login de cliente ainda usa conta Manus; um modelo adequado a consumidores comuns precisa ser escolhido antes do lançamento.
 
-APIs globais aceitam somente `super_admin`; APIs da loja aceitam somente `store_owner`/`staff` e usam a associação da sessão para determinar `store_id`. O cliente só consulta pedidos da identidade autenticada. O catálogo público é público por projeto; não expõe as funções de painel.
+APIs globais aceitam somente `super_admin`; APIs da loja aceitam somente `store_owner`/`staff` e usam a associação da sessão para determinar `store_id`. O login OAuth preserva esses papéis já atribuídos e só concede Super Admin se a identidade estiver na allowlist. O cliente só consulta pedidos da identidade autenticada. O catálogo público informa disponibilidade, não expõe saldo físico, reservas ou estoque mínimo.
 
 Fotos são aceitas por URL HTTPS pública ou caminhos `/assets/` e `/manus-storage/`; upload pelo painel ainda não existe. Telefone/instruções WhatsApp, localização das lojas e regras locais de retirada/entrega precisam ser configuradas antes do uso real.
 
@@ -65,4 +65,4 @@ npm test
 npm audit --omit=dev
 ```
 
-A última validação passou com 21/21 testes e 0 vulnerabilidades nas dependências de produção. Os testes de papel e limite são unitários; não foram criados pedidos artificiais no banco compartilhado. O login OAuth real e os acessos cruzados com contas de usuário ainda precisam de teste autenticado. A publicação pública não foi feita.
+A última validação passou com 26/26 testes e 0 vulnerabilidades nas dependências de produção. Os testes de papéis, limite, sanitização pública e vínculo da função WhatsApp são unitários/estáticos; não foram criados pedidos artificiais no banco compartilhado. Login OAuth real, relogin de lojista/equipe e acessos cruzados entre contas ainda precisam de teste autenticado. A publicação pública não foi feita.

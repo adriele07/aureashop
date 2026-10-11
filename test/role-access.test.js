@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { ADMIN_ROLES, STORE_ROLES, roleAllowed } = require('../role-access');
+const { ADMIN_ROLES, STORE_ROLES, roleAllowed, resolveLoginRole } = require('../role-access');
 
 test('somente super_admin pode acessar as rotas globais', () => {
   assert.equal(roleAllowed({ role: 'super_admin' }, ADMIN_ROLES), true);
@@ -20,4 +20,12 @@ test('somente store_owner e staff podem acessar as rotas operacionais da loja', 
 test('usuário ausente não recebe autorização por padrão', () => {
   assert.equal(roleAllowed(null, ADMIN_ROLES), false);
   assert.equal(roleAllowed(undefined, STORE_ROLES), false);
+});
+
+test('login OAuth preserva papel de loja e respeita allowlist de Super Admin', () => {
+  assert.equal(resolveLoginRole('store_owner', false), 'store_owner');
+  assert.equal(resolveLoginRole('staff', false), 'staff');
+  assert.equal(resolveLoginRole('customer', true), 'super_admin');
+  assert.equal(resolveLoginRole('super_admin', false), 'customer');
+  assert.equal(resolveLoginRole('customer', false), 'customer');
 });

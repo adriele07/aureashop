@@ -16,18 +16,23 @@
   };
   window.imgStyle = value => `style="background-image:url('${escapeHtml(safeImage(value))}')"`;
 
-  window.productCard = product => { const availableQty = Number(product.availableQty ?? product.stockQty ?? 0); const canOrder = availableQty >= Number(product.moq); return `<article class="product-card">
-    <a href="/products/${encodeURIComponent(product.slug)}" class="product-image" ${window.imgStyle(product.image)}>
-      <span class="product-badge">${escapeHtml(product.badge)}</span>
-    </a>
-    <div class="product-info">
-      <a href="/products/${encodeURIComponent(product.slug)}"><h3>${escapeHtml(product.name)}</h3></a>
-      <p class="product-supplier">${escapeHtml(product.supplier)} · ${escapeHtml(product.category)}</p>
-      <div class="product-meta"><div class="meta-item"><span>Pedido mínimo</span><strong>${Number(product.moq)} ${escapeHtml(product.unit)}</strong></div>
-      <div class="meta-item"><span>Prazo</span><strong>${escapeHtml(product.lead)}</strong></div></div>
-      <div class="product-card-foot"><div class="price">${money(product.price)}<small> por ${escapeHtml(product.unit)}</small></div>
-      <button class="add-button" data-action="add" data-id="${escapeHtml(product.id)}" aria-label="Adicionar ${escapeHtml(product.name)}" ${!canOrder ? 'disabled aria-disabled="true"' : ''}>${canOrder ? '+' : '—'}</button></div>
-    </div></article>`; };
+  window.productCard = product => {
+    const legacyAvailable = Number(product.availableQty ?? product.stockQty ?? 0);
+    const canOrder = typeof product.orderable === 'boolean' ? product.orderable : legacyAvailable >= Number(product.moq);
+    const inStock = typeof product.inStock === 'boolean' ? product.inStock : legacyAvailable > 0;
+    return `<article class="product-card">
+      <a href="/products/${encodeURIComponent(product.slug)}" class="product-image" ${window.imgStyle(product.image)}>
+        <span class="product-badge">${escapeHtml(product.badge)}</span>
+      </a>
+      <div class="product-info">
+        <a href="/products/${encodeURIComponent(product.slug)}"><h3>${escapeHtml(product.name)}</h3></a>
+        <p class="product-supplier">${escapeHtml(product.supplier)} · ${escapeHtml(product.category)}</p>
+        <div class="product-meta"><div class="meta-item"><span>Estoque</span><strong>${inStock ? 'Disponível' : 'Indisponível'}</strong></div>
+        <div class="meta-item"><span>Prazo</span><strong>${escapeHtml(product.lead)}</strong></div></div>
+        <div class="product-card-foot"><div class="price">${money(product.price)}<small> por ${escapeHtml(product.unit)}</small></div>
+        <button class="add-button" data-action="add" data-id="${escapeHtml(product.id)}" aria-label="Adicionar ${escapeHtml(product.name)}" ${!canOrder ? 'disabled aria-disabled="true"' : ''}>${canOrder ? '+' : '—'}</button></div>
+      </div></article>`;
+  };
 
   window.supplierCard = supplier => `<a href="/suppliers/${encodeURIComponent(supplier.slug)}" class="supplier-card">
     <span class="supplier-logo">${escapeHtml(supplier.mark)}</span><span><h3>${escapeHtml(supplier.name)}</h3>
@@ -48,8 +53,9 @@
   };
 
   window.productPage = product => {
-    const availableQty = Number(product.availableQty ?? product.stockQty ?? 0);
-    const canOrder = availableQty >= Number(product.moq);
+    const legacyAvailable = Number(product.availableQty ?? product.stockQty ?? 0);
+    const canOrder = typeof product.orderable === 'boolean' ? product.orderable : legacyAvailable >= Number(product.moq);
+    const inStock = typeof product.inStock === 'boolean' ? product.inStock : legacyAvailable > 0;
     const supplier = suppliers.find(item => item.id === product.supplierId) || { name: product.supplier, slug: '', location: '' };
     const tiers = Array.isArray(product.tiers) ? product.tiers : [];
     return `<section class="product-detail"><div class="container"><a class="text-link" href="/catalog">← Voltar ao catálogo</a>
@@ -64,7 +70,7 @@
       ${tiers.map((tier, index) => `<div class="tier-row"><span>${escapeHtml(tier[0])} ${escapeHtml(product.unit)}</span><strong>${escapeHtml(tier[1])}</strong><span>${index ? 'Volume' : 'Base'}</span></div>`).join('')}
       </div><div class="quantity-row"><div class="quantity-control"><button data-action="qty-minus" aria-label="Diminuir quantidade">−</button>
       <input id="detail-qty" type="number" min="${Number(product.moq)}" value="${Number(product.moq)}" /><button data-action="qty-plus" aria-label="Aumentar quantidade">+</button></div>
-      <span class="catalog-count">Mínimo: ${Number(product.moq)} ${escapeHtml(product.unit)} · Disponível: ${availableQty}</span></div>
+      <span class="catalog-count">Mínimo: ${Number(product.moq)} ${escapeHtml(product.unit)} · ${inStock ? 'Em estoque' : 'Indisponível'}</span></div>
       <div class="detail-actions"><button class="button button-primary" data-action="add-detail" data-id="${escapeHtml(product.id)}" ${!canOrder ? 'disabled aria-disabled="true"' : ''}>${canOrder ? 'Adicionar ao carrinho' : 'Sem estoque suficiente'} <span>→</span></button>
       <a class="button button-ghost" style="color:var(--navy);border-color:var(--line)" href="/suppliers/${encodeURIComponent(supplier.slug)}">Ver fornecedor</a></div></div></div></div></section>`;
   };
